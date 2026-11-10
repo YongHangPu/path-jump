@@ -638,6 +638,73 @@ function chooseFolder() {
   }
 }
 
+const RECENT_KEY = 'recent-paths'
+const RECENT_LIMIT = 6
+
+function linkLabel(target) {
+  if (!target) return ''
+  if (/^[A-Za-z]:[\\/]?$/.test(target)) return `${target[0].toUpperCase()} 盘`
+  const trimmed = target.replace(/[\\/]+$/, '')
+  return path.basename(trimmed) || trimmed || target
+}
+
+function readRecentPaths() {
+  let raw
+  try {
+    if (typeof utools !== 'undefined' && utools.dbStorage) raw = utools.dbStorage.getItem(RECENT_KEY)
+  } catch (err) {
+    raw = undefined
+  }
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((item) => item && typeof item.path === 'string' && item.path)
+    .slice(0, RECENT_LIMIT)
+}
+
+function getRecentPaths() {
+  return readRecentPaths().map((item) => ({
+    path: item.path,
+    label: linkLabel(item.path),
+    at: Number(item.at) || 0
+  }))
+}
+
+// Opening a file remembers its parent folder, so the list always points at a
+// directory the user can actually return to.
+function rememberPath(target) {
+  if (typeof target !== 'string' || !target.trim()) return getRecentPaths()
+  let probe = target.trim()
+  if (IS_WINDOWS) probe = probe.replace(/^([a-z]):/, (_, drive) => `${drive.toUpperCase()}:`)
+  try {
+    if (fs.statSync(probe).isFile()) probe = path.dirname(probe)
+  } catch (err) {
+    // Keep the path as given when it cannot be inspected.
+  }
+  const key = IS_WINDOWS ? probe.toLowerCase() : probe
+  const list = readRecentPaths().filter((item) => {
+    const itemKey = IS_WINDOWS ? item.path.toLowerCase() : item.path
+    return itemKey !== key
+  })
+  list.unshift({ path: probe, at: Date.now() })
+  try {
+    if (typeof utools !== 'undefined' && utools.dbStorage) {
+      utools.dbStorage.setItem(RECENT_KEY, list.slice(0, RECENT_LIMIT))
+    }
+  } catch (err) {
+    // Recording is best-effort; browsing must not fail because of it.
+  }
+  return getRecentPaths()
+}
+
+function clearRecentPaths() {
+  try {
+    if (typeof utools !== 'undefined' && utools.dbStorage) utools.dbStorage.removeItem(RECENT_KEY)
+  } catch (err) {
+    return []
+  }
+  return []
+}
+
 const THEME_KEY = 'theme-mode'
 const THEME_MODES = new Set(['system', 'light', 'dark'])
 
@@ -700,6 +767,9 @@ window.services = {
   saveQuickLinks,
   resetQuickLinks,
   chooseFolder,
+  getRecentPaths,
+  rememberPath,
+  clearRecentPaths,
   getPlatformInfo,
   getThemeMode,
   setThemeMode

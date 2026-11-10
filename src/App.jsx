@@ -64,6 +64,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [quickLinks, setQuickLinks] = useState([])
   const [editingLinks, setEditingLinks] = useState(false)
+  const [recentPaths, setRecentPaths] = useState([])
   const [iconMap, setIconMap] = useState({})
   const [banner, setBanner] = useState(null)
   const [snack, setSnack] = useState(null)
@@ -82,6 +83,8 @@ export default function App() {
   const inputRef = useRef(null)
   const requestRef = useRef(0)
   const actionLockRef = useRef(false)
+  const resolvingRef = useRef(false)
+  const pendingRef = useRef('')
 
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemDark)
 
@@ -123,6 +126,12 @@ export default function App() {
     const next = /[\\/]$/.test(target) ? target : `${target}${platform.separator}`
     setBanner(null)
     setQuery(next)
+    try {
+      const updated = window.services?.rememberPath?.(next)
+      if (updated) setRecentPaths(updated)
+    } catch (err) {
+      // Recent history is best-effort.
+    }
     focusInput()
   }, [focusInput, platform.separator])
 
@@ -188,6 +197,16 @@ export default function App() {
     else setSnack({ severity: 'error', message: '恢复默认入口失败' })
   }, [])
 
+  const clearRecentPaths = useCallback(() => {
+    let list = []
+    try {
+      list = window.services?.clearRecentPaths?.() || []
+    } catch (err) {
+      list = []
+    }
+    setRecentPaths(list)
+  }, [])
+
   const openEntry = useCallback(async (entry) => {
     if (!entry || actionLockRef.current) return
     actionLockRef.current = true
@@ -195,6 +214,12 @@ export default function App() {
     try {
       const result = await window.services?.openPath?.(entry.path)
       if (result?.ok) {
+        try {
+          const updated = window.services?.rememberPath?.(entry.path)
+          if (updated) setRecentPaths(updated)
+        } catch (err) {
+          // Recent history is best-effort.
+        }
         exitPlugin()
         return
       }
@@ -337,51 +362,76 @@ export default function App() {
     } catch (err) {
       setQuickLinks([])
     }
+    try {
+      setRecentPaths(window.services?.getRecentPaths?.() || [])
+    } catch (err) {
+      setRecentPaths([])
+    }
     focusInput()
   }, [focusInput])
 
-  useEffect(() => {
-    const text = query.trim()
-    if (!text) {
-      requestRef.current += 1
-      setResolution(null)
-      setResolving(false)
-      return undefined
+  const runResolveRef = useRef(null)
+  runResolveRef.current = async (text) => {
+    // Only one resolution runs at a time; keystrokes made while it is still in
+    // flight queue the newest text, so a slow share cannot pile up readdir and
+    // stat batches faster than they complete.
+    if (resolvingRef.current) {
+      pendingRef.current = text
+      return
     }
-
-    setEditingLinks(false)
-
+    resolvingRef.current = true
+    setResolving(true)
     const requestId = requestRef.current + 1
     requestRef.current = requestId
-    setResolving(true)
-
-    const timer = window.setTimeout(async () => {
-      try {
-        let result
-        if (window.services && typeof window.services.resolveQuery === 'function') {
-          result = await window.services.resolveQuery(query)
-        } else {
-          result = {
-            mode: 'error',
-            error: '本地能力未加载，请在 uTools 客户端中运行',
-            entries: [],
-            segments: []
-          }
+    try {
+      let result
+      if (window.services && typeof window.services.resolveQuery === 'function') {
+        result = await window.services.resolveQuery(text)
+      } else {
+        result = {
+          mode: 'error',
+          error: '本地能力未加载，请在 uTools 客户端中运行',
+          entries: [],
+          segments: []
         }
-        if (requestRef.current !== requestId) return
+      }
+      if (requestRef.current === requestId) {
         setResolution(result)
         setSelectedIndex(0)
-      } catch (err) {
-        if (requestRef.current !== requestId) return
+      }
+    } catch (err) {
+      if (requestRef.current === requestId) {
         setResolution({
           mode: 'error',
           error: '读取路径失败，请稍后重试',
           entries: [],
           segments: []
         })
-      } finally {
-        if (requestRef.current === requestId) setResolving(false)
       }
+    } finally {
+      if (requestRef.current === requestId) setResolving(false)
+      resolvingRef.current = false
+      const next = pendingRef.current
+      pendingRef.current = ''
+      if (next) runResolveRef.current(next)
+    }
+  }
+
+  useEffect(() => {
+    const text = query.trim()
+    if (!text) {
+      requestRef.current += 1
+      pendingRef.current = ''
+      setResolution(null)
+      setResolving(false)
+      return undefined
+    }
+
+    setEditingLinks(false)
+    setResolving(true)
+
+    const timer = window.setTimeout(() => {
+      runResolveRef.current(text)
     }, 90)
 
     return () => window.clearTimeout(timer)
@@ -459,11 +509,12 @@ export default function App() {
           return
         }
         const entry = entries[selectedIndex]
-        if (event.ctrlKey || event.metaKey) {
-          if (entry) revealEntry(entry)
-        } else if (entry) {
-          activateEntry(entry)
+        if (!entry) {
+          setSnack({ severity: 'info', message: '当前没有可打开的项目' })
+          return
         }
+        if (event.ctrlKey || event.metaKey) revealEntry(entry)
+        else activateEntry(entry)
         return
       }
 
@@ -590,6 +641,7 @@ export default function App() {
             quickLinks={quickLinks}
             platform={platform}
             editingLinks={editingLinks}
+            recentPaths={recentPaths}
             onSelect={setSelectedIndex}
             onActivate={activateEntry}
             onOpen={activateEntry}
@@ -600,6 +652,7 @@ export default function App() {
             onAddLink={addQuickLink}
             onRemoveLink={removeQuickLink}
             onResetLinks={resetQuickLinks}
+            onClearRecent={clearRecentPaths}
           />
           <SelectionBar
             entry={selectedEntry}

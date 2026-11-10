@@ -17,7 +17,7 @@ import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import SearchOffRoundedIcon from '@mui/icons-material/SearchOffRounded'
 import StorageRoundedIcon from '@mui/icons-material/StorageRounded'
 import SubdirectoryArrowRightRoundedIcon from '@mui/icons-material/SubdirectoryArrowRightRounded'
-import { entryMeta } from '../utils'
+import { entryMeta, formatTime } from '../utils'
 
 const QUICK_ICONS = {
   home: HomeRoundedIcon,
@@ -32,11 +32,13 @@ function StartScreen({
   quickLinks,
   platform,
   editingLinks,
+  recentPaths,
   onQuickLink,
   onToggleLinkEditing,
   onAddLink,
   onRemoveLink,
-  onResetLinks
+  onResetLinks,
+  onClearRecent
 }) {
   return (
     <div className="start">
@@ -95,6 +97,33 @@ function StartScreen({
         <button type="button" className="links-reset" onClick={onResetLinks}>
           恢复默认入口
         </button>
+      )}
+
+      {recentPaths.length > 0 && (
+        <div className="recent">
+          <div className="recent-head">
+            <span className="recent-title">最近访问</span>
+            <button type="button" className="link-edit" onClick={onClearRecent}>
+              清空
+            </button>
+          </div>
+          <div className="recent-list">
+            {recentPaths.map((item) => (
+              <button
+                type="button"
+                className="recent-item"
+                key={item.path}
+                title={item.path}
+                onClick={() => onQuickLink(item.path)}
+              >
+                <FolderOpenRoundedIcon className="recent-icon" sx={{ fontSize: 14 }} />
+                <span className="recent-label">{item.label}</span>
+                <span className="recent-path">{item.path}</span>
+                <span className="recent-time">{formatTime(item.at)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="examples">
@@ -219,6 +248,7 @@ export default function EntryList({
   quickLinks,
   platform,
   editingLinks,
+  recentPaths,
   onSelect,
   onActivate,
   onOpen,
@@ -228,7 +258,8 @@ export default function EntryList({
   onToggleLinkEditing,
   onAddLink,
   onRemoveLink,
-  onResetLinks
+  onResetLinks,
+  onClearRecent
 }) {
   const scrollRef = useRef(null)
 
@@ -244,11 +275,13 @@ export default function EntryList({
           quickLinks={quickLinks}
           platform={platform}
           editingLinks={editingLinks}
+          recentPaths={recentPaths}
           onQuickLink={onQuickLink}
           onToggleLinkEditing={onToggleLinkEditing}
           onAddLink={onAddLink}
           onRemoveLink={onRemoveLink}
           onResetLinks={onResetLinks}
+          onClearRecent={onClearRecent}
         />
       </div>
     )
