@@ -20,15 +20,6 @@ import { subscribeEnter } from './enterBus'
 
 const iconCache = new Map()
 
-const MODE_LABELS = {
-  browse: '浏览',
-  search: '匹配',
-  target: '目标',
-  resolved: '已定位',
-  invalid: '未识别',
-  error: '读取失败'
-}
-
 const THEME_META = {
   system: { label: '跟随系统', icon: ContrastRoundedIcon },
   light: { label: '浅色', icon: LightModeRoundedIcon },
@@ -533,19 +524,21 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [entries, selectedIndex, resolution, query, activateEntry, revealEntry, goUp, copyPath, openFolder])
 
-  const modeLabel = !query
-    ? '就绪'
-    : resolution?.mode
-      ? MODE_LABELS[resolution.mode] || ''
-      : '读取中'
-
   const ThemeIcon = THEME_META[themeMode].icon
 
-  const statusText = !query
-    ? (platform.isMac ? '输入路径开始' : '输入盘符或路径开始')
-    : resolution?.error
-      ? resolution.error
-      : `${modeLabel} · ${entries.length} 项${resolution?.truncated ? '（仅显示前 300 项）' : ''}`
+  const buildStatus = () => {
+    if (!query) return platform.isMac ? '输入路径开始' : '输入盘符或路径开始'
+    if (!resolution) return '读取中…'
+    if (resolution.error) return resolution.error
+    const truncated = resolution.truncated ? '（仅显示前 300 项）' : ''
+    if (resolution.mode === 'target') return `目标文件：${resolution.filter}`
+    if (resolution.mode === 'search' && resolution.filter) {
+      return `匹配「${resolution.filter}」 · ${entries.length} 项${truncated}`
+    }
+    return `${entries.length} 项${truncated}`
+  }
+
+  const statusText = buildStatus()
 
   return (
     <ThemeProvider theme={theme}>
@@ -616,14 +609,16 @@ export default function App() {
         </div>
 
         <div className="content-card">
-          <PathBar
-            resolution={resolution}
-            busy={busy}
-            platform={platform}
-            onNavigate={navigateTo}
-            onCopyDir={copyPath}
-            onOpenDir={openFolder}
-          />
+          {query && (
+            <PathBar
+              resolution={resolution}
+              busy={busy}
+              platform={platform}
+              onNavigate={navigateTo}
+              onCopyDir={copyPath}
+              onOpenDir={openFolder}
+            />
+          )}
 
           {banner && (
             <div className={`banner ${banner.severity || 'warning'}`}>

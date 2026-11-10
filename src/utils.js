@@ -40,9 +40,11 @@ export function formatTime(value) {
 }
 
 export function entryMeta(entry) {
-  if (entry.isDirectory) return '文件夹'
-  const parts = [formatSize(entry.size)]
+  // The folder icon and the trailing chevron already say "this is a directory",
+  // so the row keeps the modification time instead of the redundant label.
   const time = formatTime(entry.mtime)
+  if (entry.isDirectory) return time
+  const parts = [formatSize(entry.size)]
   if (time) parts.push(time)
   return parts.join(' · ')
 }
