@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>路径直达</title>
+    <script>
+      (function () {
+        var mode = 'system'
+        try {
+          if (window.services && typeof window.services.getThemeMode === 'function') {
+            mode = window.services.getThemeMode()
+          } else {
+            var stored = window.localStorage.getItem('theme-mode')
+            if (stored === 'light' || stored === 'dark' || stored === 'system') mode = stored
+          }
+        } catch (err) {}
+        var dark = mode === 'dark'
+          || (mode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="index.js"></script>
+  </body>
+</html>

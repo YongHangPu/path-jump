@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output (regenerate with `npm run build`)
+dist/
+
+# uTools dev/build artifacts
+*.upx
+upx/
+
+# Agent workspace data
+.workbuddy/
+.screenshots/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

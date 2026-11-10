@@ -1,0 +1,29 @@
+{
+  "main": "index.html",
+  "logo": "logo.png",
+  "preload": "preload.js",
+  "pluginName": "路径直达",
+  "description": "逐级浏览并打开文件或文件夹，也可粘贴完整路径直接定位。",
+  "features": [
+    {
+      "code": "go",
+      "description": "输入 go 进入路径浏览",
+      "platform": ["win32", "darwin"],
+      "cmds": ["go"]
+    },
+    {
+      "code": "go-path",
+      "description": "识别文本中的 Windows 或 macOS 路径并直接打开",
+      "platform": ["win32", "darwin"],
+      "cmds": [
+        {
+          "type": "regex",
+          "label": "路径直达",
+          "match": "/(?:^|[\\s\"'（(\\[【“‘「=，：、])(?:[A-Za-z]:[\\\\\\/]|~\\/|\\/(?=[^\\s\\/]))[^\\r\\n]*/",
+          "minLength": 3,
+          "maxLength": 2000
+        }
+      ]
+    }
+  ]
+}
