@@ -12,7 +12,9 @@ const BOUNDARY_CHARS = new Set([
 ])
 
 const WINDOWS_PATH_START_RE = /^(?:[A-Za-z]:(?:[\\/]|$)|\\\\[^\\/\s]+[\\/])/
-const WINDOWS_PATH_FIND_RE = /(?:[A-Za-z]:[\\/]|\\\\[^\\/\s]+[\\/])/
+// The negative lookbehind keeps URL schemes from being read as a drive letter:
+// without it "https://example.com/a" matches the "s:/" part and becomes "S:\example.com\a".
+const WINDOWS_PATH_FIND_RE = /(?<![A-Za-z0-9])(?:[A-Za-z]:[\\/]|\\\\[^\\/\s]+[\\/])/
 
 function stripWrappingQuotes(input) {
   let text = String(input == null ? '' : input).trim()

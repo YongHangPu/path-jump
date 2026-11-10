@@ -204,8 +204,31 @@ async function walkToExisting(candidate) {
   return null
 }
 
+// Text glued to the end of a path (common when copying from a Chinese sentence,
+// e.g. "C:\Users\Yhong\Documents目录下") survives trimming and token removal.
+// When the walk leaves exactly one unresolved segment, peel it from the right
+// one character at a time until the remaining prefix exists.
+async function trimWalkedTail(walked) {
+  if (!walked || walked.remainder.length !== 1) return null
+  const tail = walked.remainder[0]
+  for (let length = tail.length - 1; length >= 1; length -= 1) {
+    const probe = path.join(walked.path, tail.slice(0, length))
+    const stat = await statSafe(probe)
+    if (stat) return { path: probe, stat }
+  }
+  return null
+}
+
+// A single letter ("C") is treated as that drive's root, so the very first
+// keystroke browses the drive instead of reporting an unrecognised path.
+function expandDriveLetter(raw) {
+  if (!IS_WINDOWS) return null
+  const text = String(raw == null ? '' : raw).trim()
+  return /^[A-Za-z]$/.test(text) ? `${text.toUpperCase()}:\\` : null
+}
+
 async function resolveQuery(raw) {
-  const extracted = extractCandidate(raw)
+  const extracted = extractCandidate(raw) || expandDriveLetter(raw)
   if (!extracted) {
     return baseResult({
       mode: 'invalid',
@@ -247,7 +270,12 @@ async function resolveQuery(raw) {
       found = { path: resolvedPath, stat, how, remainder: [] }
     } else {
       const walked = await walkToExisting(candidate)
-      if (walked) found = { path: walked.path, stat: walked.stat, how: 'walk', remainder: walked.remainder }
+      if (walked) {
+        const tail = await trimWalkedTail(walked)
+        found = tail
+          ? { path: tail.path, stat: tail.stat, how: 'tail', remainder: [] }
+          : { path: walked.path, stat: walked.stat, how: 'walk', remainder: walked.remainder }
+      }
     }
   } catch (err) {
     return baseResult({
@@ -267,7 +295,7 @@ async function resolveQuery(raw) {
     })
   }
 
-  const locatedNotice = found.how === 'token' || found.how === 'trim'
+  const locatedNotice = ['token', 'trim', 'tail'].includes(found.how)
     ? `已从输入中定位到：${found.path}`
     : null
 

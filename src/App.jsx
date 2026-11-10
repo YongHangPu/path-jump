@@ -338,18 +338,21 @@ export default function App() {
     const entries = resolution?.entries || []
     if (!entries.length) return undefined
 
-    const keys = new Set()
+    // Icons are cached per type (folder / extension) to keep IPC calls low, but
+    // the system API expects a real file path, so keep one sample path per type.
+    const samples = new Map()
     for (const entry of entries) {
-      keys.add(entry.isDirectory ? 'folder' : entry.ext || entry.path)
+      const key = entry.isDirectory ? 'folder' : entry.ext || entry.path
+      if (!samples.has(key)) samples.set(key, entry.path)
     }
 
     let cancelled = false
 
-    const loadIcon = async (key) => {
+    const loadIcon = async (key, samplePath) => {
       if (!window.utools || typeof window.utools.getFileIconAsync !== 'function') return
       let promise = iconCache.get(key)
       if (!promise) {
-        promise = window.utools.getFileIconAsync(key).catch(() => '')
+        promise = window.utools.getFileIconAsync(samplePath).catch(() => '')
         iconCache.set(key, promise)
       }
       try {
@@ -362,7 +365,7 @@ export default function App() {
       }
     }
 
-    keys.forEach(loadIcon)
+    samples.forEach((samplePath, key) => loadIcon(key, samplePath))
 
     return () => {
       cancelled = true
