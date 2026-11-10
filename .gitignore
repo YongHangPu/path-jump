@@ -6,6 +6,7 @@ dist/
 
 # uTools dev/build artifacts
 *.upx
+*.upxs
 upx/
 
 # Agent workspace data
