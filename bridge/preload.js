@@ -489,7 +489,7 @@ function getSystemPath(name) {
   }
 }
 
-function getQuickLinks() {
+function buildDefaultQuickLinks() {
   const links = []
   const definitions = [
     { label: '主目录', icon: 'home', name: 'home' },
@@ -539,6 +539,103 @@ function getQuickLinks() {
   }
 
   return links
+}
+
+const QUICK_LINKS_KEY = 'quick-links'
+
+// A stored list replaces the platform defaults entirely. An empty list is a
+// valid choice, so only a missing entry falls back to the defaults.
+function inferLinkIcon(target) {
+  if (!target) return 'folder'
+  if (/^[A-Za-z]:[\\/]?$/.test(target)) return 'drive'
+  if (target === getSystemPath('home')) return 'home'
+  if (target === getSystemPath('desktop')) return 'desktop'
+  if (target === '/Applications') return 'apps'
+  return 'folder'
+}
+
+function normalizeLink(item) {
+  if (!item || typeof item !== 'object') return null
+  const target = String(item.path == null ? '' : item.path).trim()
+  if (!target) return null
+  let label = String(item.label == null ? '' : item.label).trim()
+  if (!label && /^[A-Za-z]:[\\/]?$/.test(target)) label = `${target[0].toUpperCase()} 盘`
+  if (!label) {
+    const trimmed = target.replace(/[\\/]+$/, '')
+    label = path.basename(trimmed) || trimmed || target
+  }
+  return { label, path: target }
+}
+
+function readStoredLinks() {
+  let raw
+  try {
+    if (typeof utools !== 'undefined' && utools.dbStorage) {
+      raw = utools.dbStorage.getItem(QUICK_LINKS_KEY)
+    }
+  } catch (err) {
+    raw = undefined
+  }
+  if (!Array.isArray(raw)) return null
+  return raw.map(normalizeLink).filter(Boolean)
+}
+
+function writeStoredLinks(list) {
+  const cleaned = []
+  const seen = new Set()
+  for (const item of Array.isArray(list) ? list : []) {
+    const link = normalizeLink(item)
+    if (!link) continue
+    const key = IS_WINDOWS ? link.path.toLowerCase() : link.path
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleaned.push(link)
+  }
+  try {
+    if (typeof utools === 'undefined' || !utools.dbStorage) return false
+    utools.dbStorage.setItem(QUICK_LINKS_KEY, cleaned)
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+function getQuickLinks() {
+  const stored = readStoredLinks()
+  const items = stored === null ? buildDefaultQuickLinks() : stored
+  return items.map((item) => ({
+    label: item.label,
+    path: item.path,
+    icon: item.icon || inferLinkIcon(item.path)
+  }))
+}
+
+function saveQuickLinks(list) {
+  return writeStoredLinks(list) ? getQuickLinks() : null
+}
+
+function resetQuickLinks() {
+  try {
+    if (typeof utools !== 'undefined' && utools.dbStorage) {
+      utools.dbStorage.removeItem(QUICK_LINKS_KEY)
+    }
+  } catch (err) {
+    return null
+  }
+  return getQuickLinks()
+}
+
+function chooseFolder() {
+  try {
+    if (typeof utools === 'undefined' || typeof utools.showOpenDialog !== 'function') return ''
+    const chosen = utools.showOpenDialog({
+      title: '选择要添加的快捷入口',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    return Array.isArray(chosen) && chosen.length ? chosen[0] : ''
+  } catch (err) {
+    return ''
+  }
 }
 
 const THEME_KEY = 'theme-mode'
@@ -600,6 +697,9 @@ window.services = {
   revealPath,
   copyPath,
   getQuickLinks,
+  saveQuickLinks,
+  resetQuickLinks,
+  chooseFolder,
   getPlatformInfo,
   getThemeMode,
   setThemeMode

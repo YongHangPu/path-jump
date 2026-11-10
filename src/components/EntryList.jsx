@@ -28,39 +28,80 @@ const QUICK_ICONS = {
   apps: AppsRoundedIcon
 }
 
-function StartScreen({ quickLinks, platform, onQuickLink }) {
+function StartScreen({
+  quickLinks,
+  platform,
+  editingLinks,
+  onQuickLink,
+  onToggleLinkEditing,
+  onAddLink,
+  onRemoveLink,
+  onResetLinks
+}) {
   return (
     <div className="start">
-      <div className="start-heading">快速定位文件与文件夹</div>
+      <div className="start-heading-row">
+        <div className="start-heading">快速定位文件与文件夹</div>
+        <button type="button" className="link-edit" onClick={onToggleLinkEditing}>
+          {editingLinks ? '完成' : '编辑入口'}
+        </button>
+      </div>
       <div className="start-desc">
         输入{platform.isMac ? '绝对路径' : '盘符或完整路径'}即可开始。可以逐级浏览，也可以一次跳转到目标位置。
       </div>
 
-      {quickLinks.length > 0 && (
+      {(quickLinks.length > 0 || editingLinks) && (
         <div className="quick-grid">
           {quickLinks.map((link) => {
             const Icon = QUICK_ICONS[link.icon] || FolderRoundedIcon
             return (
               <button
                 type="button"
-                className="quick-tile"
+                className={editingLinks ? 'quick-tile editing' : 'quick-tile'}
                 key={`${link.icon}-${link.path}`}
-                onClick={() => onQuickLink(link.path)}
+                onClick={() => {
+                  if (!editingLinks) onQuickLink(link.path)
+                }}
               >
                 <Icon className="quick-icon" sx={{ fontSize: 20 }} />
                 <span className="quick-label">{link.label}</span>
                 <span className="quick-path" title={link.path}>{link.path}</span>
+                {editingLinks && (
+                  <span
+                    className="quick-remove"
+                    role="button"
+                    aria-label={`移除 ${link.label}`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onRemoveLink(link.path)
+                    }}
+                  >
+                    ×
+                  </span>
+                )}
               </button>
             )
           })}
+          {editingLinks && (
+            <button type="button" className="quick-add" onClick={onAddLink}>
+              <span className="quick-add-plus">+</span>
+              <span>添加文件夹</span>
+            </button>
+          )}
         </div>
+      )}
+
+      {editingLinks && (
+        <button type="button" className="links-reset" onClick={onResetLinks}>
+          恢复默认入口
+        </button>
       )}
 
       <div className="examples">
         <div className="example">
           <span className="example-dot" />
           <span>
-            逐级浏览：输入 <code>{platform.browseExample}</code>，选中文件夹后按 <kbd>Enter</kbd> 进入下一级，或按 <kbd>{platform.modifier}</kbd>+<kbd>Enter</kbd> 在{platform.fileManager}中打开。
+            逐级浏览：输入 <code>{platform.browseExample}</code> 开始。按 <kbd>Enter</kbd> 进入选中文件夹，按 <kbd>{platform.modifier}</kbd>+<kbd>Enter</kbd> 在{platform.fileManager}中打开该文件夹，按 <kbd>{platform.modifier}</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> 打开当前所在目录。
           </span>
         </div>
         <div className="example">
@@ -177,12 +218,17 @@ export default function EntryList({
   iconMap,
   quickLinks,
   platform,
+  editingLinks,
   onSelect,
   onActivate,
   onOpen,
   onCopy,
   onReveal,
-  onQuickLink
+  onQuickLink,
+  onToggleLinkEditing,
+  onAddLink,
+  onRemoveLink,
+  onResetLinks
 }) {
   const scrollRef = useRef(null)
 
@@ -194,7 +240,16 @@ export default function EntryList({
   if (!query) {
     return (
       <div className="list-scroll">
-        <StartScreen quickLinks={quickLinks} platform={platform} onQuickLink={onQuickLink} />
+        <StartScreen
+          quickLinks={quickLinks}
+          platform={platform}
+          editingLinks={editingLinks}
+          onQuickLink={onQuickLink}
+          onToggleLinkEditing={onToggleLinkEditing}
+          onAddLink={onAddLink}
+          onRemoveLink={onRemoveLink}
+          onResetLinks={onResetLinks}
+        />
       </div>
     )
   }

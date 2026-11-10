@@ -68,17 +68,23 @@ export default function PathBar({ resolution, busy, platform, onNavigate, onCopy
               <IconButton
                 size="small"
                 onClick={() => onCopyDir(baseDir)}
-                sx={{ color: 'var(--fg-secondary)' }}
+                sx={{ color: 'var(--fg-secondary)', borderRadius: '7px' }}
               >
                 <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title={`在${platform.fileManager}中打开当前文件夹`}>
+            <Tooltip title={`在${platform.fileManager}中打开当前目录（${platform.modifier}+Shift+Enter）`}>
               <IconButton
                 size="small"
                 disabled={busy}
                 onClick={() => onOpenDir(baseDir)}
-                sx={{ color: 'var(--fg-secondary)' }}
+                sx={{
+                  color: 'var(--primary)',
+                  bgcolor: 'var(--primary-soft)',
+                  borderRadius: '7px',
+                  padding: '4px 6px',
+                  '&:hover': { bgcolor: 'var(--selected)' }
+                }}
               >
                 <FolderOpenRoundedIcon sx={{ fontSize: 17 }} />
               </IconButton>

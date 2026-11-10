@@ -63,6 +63,7 @@ export default function App() {
   const [resolving, setResolving] = useState(false)
   const [busy, setBusy] = useState(false)
   const [quickLinks, setQuickLinks] = useState([])
+  const [editingLinks, setEditingLinks] = useState(false)
   const [iconMap, setIconMap] = useState({})
   const [banner, setBanner] = useState(null)
   const [snack, setSnack] = useState(null)
@@ -136,6 +137,56 @@ export default function App() {
     setSnack({ severity: ok ? 'success' : 'error', message: ok ? '已复制路径' : '复制失败' })
     focusInput()
   }, [focusInput])
+
+  const toggleLinkEditing = useCallback(() => {
+    setEditingLinks((current) => !current)
+  }, [])
+
+  const addQuickLink = useCallback(() => {
+    let target = ''
+    try {
+      target = window.services?.chooseFolder?.() || ''
+    } catch (err) {
+      target = ''
+    }
+    if (!target) return
+    const current = window.services?.getQuickLinks?.() || []
+    if (current.some((item) => item.path === target)) {
+      setSnack({ severity: 'info', message: '这个入口已经存在' })
+      return
+    }
+    let saved = null
+    try {
+      saved = window.services?.saveQuickLinks?.(current.concat([{ path: target }]))
+    } catch (err) {
+      saved = null
+    }
+    if (saved) setQuickLinks(saved)
+    else setSnack({ severity: 'error', message: '保存快捷入口失败' })
+  }, [])
+
+  const removeQuickLink = useCallback((target) => {
+    const current = window.services?.getQuickLinks?.() || []
+    let saved = null
+    try {
+      saved = window.services?.saveQuickLinks?.(current.filter((item) => item.path !== target))
+    } catch (err) {
+      saved = null
+    }
+    if (saved) setQuickLinks(saved)
+    else setSnack({ severity: 'error', message: '保存快捷入口失败' })
+  }, [])
+
+  const resetQuickLinks = useCallback(() => {
+    let links = null
+    try {
+      links = window.services?.resetQuickLinks?.()
+    } catch (err) {
+      links = null
+    }
+    if (links) setQuickLinks(links)
+    else setSnack({ severity: 'error', message: '恢复默认入口失败' })
+  }, [])
 
   const openEntry = useCallback(async (entry) => {
     if (!entry || actionLockRef.current) return
@@ -298,6 +349,8 @@ export default function App() {
       return undefined
     }
 
+    setEditingLinks(false)
+
     const requestId = requestRef.current + 1
     requestRef.current = requestId
     setResolving(true)
@@ -400,6 +453,11 @@ export default function App() {
       if (key === 'Enter') {
         event.preventDefault()
         if (!resolution || resolution.input !== query) return
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
+          // Open the directory currently being browsed, not the selected entry.
+          if (resolution.baseDir) openFolder(resolution.baseDir)
+          return
+        }
         const entry = entries[selectedIndex]
         if (event.ctrlKey || event.metaKey) {
           if (entry) revealEntry(entry)
@@ -422,7 +480,7 @@ export default function App() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [entries, selectedIndex, resolution, query, activateEntry, revealEntry, goUp, copyPath])
+  }, [entries, selectedIndex, resolution, query, activateEntry, revealEntry, goUp, copyPath, openFolder])
 
   const modeLabel = !query
     ? '就绪'
@@ -531,12 +589,17 @@ export default function App() {
             iconMap={iconMap}
             quickLinks={quickLinks}
             platform={platform}
+            editingLinks={editingLinks}
             onSelect={setSelectedIndex}
             onActivate={activateEntry}
             onOpen={activateEntry}
             onCopy={copyPath}
             onReveal={revealEntry}
             onQuickLink={navigateTo}
+            onToggleLinkEditing={toggleLinkEditing}
+            onAddLink={addQuickLink}
+            onRemoveLink={removeQuickLink}
+            onResetLinks={resetQuickLinks}
           />
           <SelectionBar
             entry={selectedEntry}
@@ -553,6 +616,7 @@ export default function App() {
             <span className="key"><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
             <span className="key"><kbd>Enter</kbd> 进入/打开</span>
             <span className="key"><kbd>{platform.modifier}</kbd><kbd>Enter</kbd> {platform.fileManager}</span>
+            <span className="key"><kbd>{platform.modifier}</kbd><kbd>Shift</kbd><kbd>Enter</kbd> 当前目录</span>
             <span className="key"><kbd>Alt</kbd><kbd>↑</kbd> 上级</span>
             <span className="key"><kbd>{platform.modifier}</kbd><kbd>C</kbd> 复制</span>
           </div>
