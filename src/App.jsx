@@ -449,8 +449,8 @@ export default function App() {
               <FolderOpenRoundedIcon sx={{ fontSize: 18 }} />
             </div>
             <div className="brand-copy">
-              <div className="brand-title">路径直达</div>
-              <div className="brand-sub">文件与文件夹快速定位</div>
+              <div className="brand-title">路径秒开</div>
+              <div className="brand-sub">输入路径，秒开文件与文件夹</div>
             </div>
           </div>
           <div className="header-right">

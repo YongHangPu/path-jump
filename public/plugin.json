@@ -2,14 +2,14 @@
   "main": "index.html",
   "logo": "logo.png",
   "preload": "preload.js",
-  "pluginName": "路径直达",
-  "description": "逐级浏览并打开文件或文件夹，也可粘贴完整路径直接定位。",
+  "pluginName": "路径秒开",
+  "description": "输入或粘贴路径，秒开文件与文件夹；支持逐级浏览与智能提取。",
   "features": [
     {
       "code": "go",
-      "description": "输入 go 进入路径浏览",
+      "description": "输入 go 或 路径 进入目录浏览",
       "platform": ["win32", "darwin"],
-      "cmds": ["go"]
+      "cmds": ["go", "路径", "打开路径"]
     },
     {
       "code": "go-path",
@@ -18,7 +18,7 @@
       "cmds": [
         {
           "type": "regex",
-          "label": "路径直达",
+          "label": "路径秒开",
           "match": "/(?:^|[\\s\"'（(\\[【“‘「=，：、])(?:[A-Za-z]:[\\\\\\/]|~\\/|\\/(?=[^\\s\\/]))[^\\r\\n]*/",
           "minLength": 3,
           "maxLength": 2000
