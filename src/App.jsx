@@ -9,7 +9,6 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ContrastRoundedIcon from '@mui/icons-material/ContrastRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
-import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
@@ -548,31 +547,6 @@ export default function App() {
           if (event.target.tagName !== 'INPUT') focusInput()
         }}
       >
-        <header className="app-header">
-          <div className="brand">
-            <div className="brand-mark">
-              <FolderOpenRoundedIcon sx={{ fontSize: 18 }} />
-            </div>
-            <div className="brand-copy">
-              <div className="brand-title">路径秒开</div>
-              <div className="brand-sub">输入路径，秒开文件与文件夹</div>
-            </div>
-          </div>
-          <div className="header-right">
-            <Tooltip title={`主题：${THEME_META[themeMode].label}（点击切换）`} arrow placement="bottom">
-              <IconButton
-                size="small"
-                onClick={cycleTheme}
-                aria-label="切换主题"
-                sx={{ color: 'var(--fg-secondary)', padding: '5px' }}
-              >
-                {ThemeIcon && <ThemeIcon sx={{ fontSize: 16 }} />}
-              </IconButton>
-            </Tooltip>
-            <div className="header-hint">go</div>
-          </div>
-        </header>
-
         <div className="search-shell">
           <SearchRoundedIcon className="search-icon" sx={{ fontSize: 21 }} />
           <input
@@ -606,6 +580,17 @@ export default function App() {
           {(resolving || busy) && (
             <CircularProgress size={15} sx={{ color: 'var(--primary)', flex: '0 0 auto' }} />
           )}
+          <span className="search-divider" />
+          <Tooltip title={`主题：${THEME_META[themeMode].label}（点击切换）`} arrow placement="bottom">
+            <IconButton
+              size="small"
+              onClick={cycleTheme}
+              aria-label="切换主题"
+              sx={{ color: 'var(--fg-tertiary)', padding: '4px', flex: '0 0 auto' }}
+            >
+              {ThemeIcon && <ThemeIcon sx={{ fontSize: 15 }} />}
+            </IconButton>
+          </Tooltip>
         </div>
 
         <div className="content-card">

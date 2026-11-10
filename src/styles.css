@@ -91,69 +91,11 @@ input {
   user-select: none;
 }
 
-.app-header {
+.search-divider {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.brand-mark {
-  width: 29px;
-  height: 29px;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: linear-gradient(135deg, #4f8ef7 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 10px rgba(29, 78, 216, 0.24);
-}
-
-.brand-copy {
-  min-width: 0;
-}
-
-.brand-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  line-height: 1.2;
-}
-
-.brand-sub {
-  margin-top: 1px;
-  font-size: 10.5px;
-  color: var(--fg-tertiary);
-  line-height: 1.25;
-}
-
-.header-right {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-hint {
-  flex: 0 0 auto;
-  padding: 3px 8px;
-  border: 1px solid var(--kbd-border);
-  border-radius: 6px;
-  background: var(--kbd-bg);
-  color: var(--fg-secondary);
-  font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 10.5px;
-  letter-spacing: 0.4px;
+  width: 1px;
+  height: 18px;
+  background: var(--card-border);
 }
 
 .search-shell {
