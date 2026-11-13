@@ -27,7 +27,7 @@ export default function PathBar({ resolution, busy, platform, onNavigate, onCopy
             <IconButton
               size="small"
               disabled={!upDir || busy}
-              onClick={() => upDir && onNavigate(upDir)}
+              onClick={() => upDir && onNavigate(upDir, baseDir)}
               sx={{ color: 'var(--fg-secondary)' }}
             >
               <ArrowUpwardRoundedIcon sx={{ fontSize: 17 }} />
@@ -50,7 +50,11 @@ export default function PathBar({ resolution, busy, platform, onNavigate, onCopy
                     type="button"
                     className={current ? 'crumb current' : 'crumb'}
                     disabled={busy}
-                    onClick={() => onNavigate(segment.path)}
+                    onClick={() => {
+                      if (current) return
+                      // Jumping to an ancestor should land on the branch we came from.
+                      onNavigate(segment.path, segments[index + 1] ? segments[index + 1].path : '')
+                    }}
                     title={segment.path}
                   >
                     {segment.label}

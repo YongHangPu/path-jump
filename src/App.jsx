@@ -55,6 +55,7 @@ export default function App() {
   const [quickLinks, setQuickLinks] = useState([])
   const [editingLinks, setEditingLinks] = useState(false)
   const [recentPaths, setRecentPaths] = useState([])
+  const [refreshKey, setRefreshKey] = useState(0)
   const [iconMap, setIconMap] = useState({})
   const [banner, setBanner] = useState(null)
   const [snack, setSnack] = useState(null)
@@ -75,6 +76,11 @@ export default function App() {
   const actionLockRef = useRef(false)
   const resolvingRef = useRef(false)
   const pendingRef = useRef('')
+  const focusPathRef = useRef('')
+  const resolutionRef = useRef(null)
+  resolutionRef.current = resolution
+  const selectedIndexRef = useRef(0)
+  selectedIndexRef.current = selectedIndex
 
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemDark)
 
@@ -111,9 +117,12 @@ export default function App() {
     }
   }, [])
 
-  const navigateTo = useCallback((target) => {
+  const navigateTo = useCallback((target, focusTarget) => {
     if (!target) return
     const next = /[\\/]$/.test(target) ? target : `${target}${platform.separator}`
+    // Remember which entry should stay selected once the new listing arrives,
+    // so going back up lands on the folder we just left.
+    focusPathRef.current = focusTarget || ''
     setBanner(null)
     setQuery(next)
     try {
@@ -124,6 +133,15 @@ export default function App() {
     }
     focusInput()
   }, [focusInput, platform.separator])
+
+  const clearQuery = useCallback(() => {
+    focusPathRef.current = ''
+    setQuery('')
+    setResolution(null)
+    setBanner(null)
+    setSelectedIndex(0)
+    focusInput()
+  }, [focusInput])
 
   const copyPath = useCallback((target) => {
     if (!target) return
@@ -269,7 +287,7 @@ export default function App() {
 
   const goUp = useCallback(() => {
     const target = resolution?.upDir
-    if (target) navigateTo(target)
+    if (target) navigateTo(target, resolution?.baseDir)
   }, [resolution, navigateTo])
 
   const handleDirectOpen = useCallback(async (payload) => {
@@ -312,10 +330,23 @@ export default function App() {
         handleDirectOpen(action.payload)
         return
       }
-      setQuery('')
-      setResolution(null)
-      setSelectedIndex(0)
+      // Re-entry keeps the last browsed location: the component stays mounted
+      // while the plugin process lives, and a destroyed process remounts with an
+      // empty query, which naturally falls back to the start screen.
       setBanner(null)
+      setEditingLinks(false)
+      const current = resolutionRef.current
+      if (!current || current.mode === 'error' || current.mode === 'invalid') {
+        setQuery('')
+        setResolution(null)
+        setSelectedIndex(0)
+        return
+      }
+      // Refresh silently so files added while the window was hidden show up, and
+      // keep the cursor on whatever the user had selected.
+      const entry = (current.entries || [])[selectedIndexRef.current]
+      focusPathRef.current = entry ? entry.path : ''
+      setRefreshKey((key) => key + 1)
     })
     return unsubscribe
   }, [focusInput, handleDirectOpen])
@@ -360,6 +391,24 @@ export default function App() {
     focusInput()
   }, [focusInput])
 
+  // Windows paths are case-insensitive and directories are stored with a
+  // trailing separator, so compare a normalised form.
+  const sameTarget = (a, b) => {
+    if (!a || !b) return false
+    const strip = (value) => (
+      platform.isWindows ? value.replace(/[\\/]+$/, '').toLowerCase() : value.replace(/\/+$/, '')
+    )
+    return strip(a) === strip(b)
+  }
+
+  const pickFocusIndex = (result) => {
+    const focus = focusPathRef.current
+    focusPathRef.current = ''
+    if (!focus) return 0
+    const index = (result.entries || []).findIndex((entry) => sameTarget(entry.path, focus))
+    return index >= 0 ? index : 0
+  }
+
   const runResolveRef = useRef(null)
   runResolveRef.current = async (text) => {
     // Only one resolution runs at a time; keystrokes made while it is still in
@@ -387,10 +436,11 @@ export default function App() {
       }
       if (requestRef.current === requestId) {
         setResolution(result)
-        setSelectedIndex(0)
+        setSelectedIndex(pickFocusIndex(result))
       }
     } catch (err) {
       if (requestRef.current === requestId) {
+        focusPathRef.current = ''
         setResolution({
           mode: 'error',
           error: '读取路径失败，请稍后重试',
@@ -425,7 +475,7 @@ export default function App() {
     }, 90)
 
     return () => window.clearTimeout(timer)
-  }, [query])
+  }, [query, refreshKey])
 
   useEffect(() => {
     const entries = resolution?.entries || []
@@ -470,6 +520,8 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      // Let the IME handle keys while composing (e.g. Enter to pick a candidate).
+      if (event.isComposing) return
       const key = event.key
 
       if (event.altKey && key === 'ArrowUp') {
@@ -508,7 +560,18 @@ export default function App() {
         return
       }
 
-      if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'c') {
+      // Ctrl+L is swallowed by the host on Windows, so clearing uses Alt+L.
+      const typedKey = String(event.key || '').toLowerCase()
+      const isLKey = event.code === 'KeyL' || typedKey === 'l'
+      const altOnly = event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+      if (isLKey && altOnly) {
+        event.preventDefault()
+        clearQuery()
+        return
+      }
+
+      const isCKey = event.code === 'KeyC' || typedKey === 'c'
+      if ((event.ctrlKey || event.metaKey) && isCKey) {
         const input = inputRef.current
         const hasTextSelection = input && input.selectionStart !== input.selectionEnd
         const entry = entries[selectedIndex]
@@ -519,9 +582,10 @@ export default function App() {
       }
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [entries, selectedIndex, resolution, query, activateEntry, revealEntry, goUp, copyPath, openFolder])
+    // Capture phase, so element-level stopPropagation cannot hide the shortcut.
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [entries, selectedIndex, resolution, query, activateEntry, revealEntry, goUp, copyPath, openFolder, clearQuery])
 
   const ThemeIcon = THEME_META[themeMode].icon
 
@@ -564,18 +628,15 @@ export default function App() {
             autoCapitalize="off"
           />
           {query && (
-            <IconButton
-              size="small"
-              onClick={() => {
-                setQuery('')
-                setResolution(null)
-                setBanner(null)
-                focusInput()
-              }}
-              sx={{ color: 'var(--fg-tertiary)', padding: '4px' }}
-            >
-              <CloseRoundedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+            <Tooltip title={`清空（${platform.isMac ? '⌥+L' : 'Alt+L'}）`} arrow placement="bottom">
+              <IconButton
+                size="small"
+                onClick={clearQuery}
+                sx={{ color: 'var(--fg-tertiary)', padding: '4px' }}
+              >
+                <CloseRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
           )}
           {(resolving || busy) && (
             <CircularProgress size={15} sx={{ color: 'var(--primary)', flex: '0 0 auto' }} />
