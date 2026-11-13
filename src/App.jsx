@@ -31,6 +31,7 @@ const FALLBACK_PLATFORM = {
   isWindows: true,
   fileManager: '资源管理器',
   modifier: 'Ctrl',
+  alt: 'Alt',
   separator: '\\',
   placeholder: '输入路径，如 C:\\Users\\Public',
   pathExample: 'C:\\Users\\Public',
@@ -590,7 +591,7 @@ export default function App() {
   const ThemeIcon = THEME_META[themeMode].icon
 
   const buildStatus = () => {
-    if (!query) return platform.isMac ? '输入路径开始' : '输入盘符或路径开始'
+    if (!query) return ''
     if (!resolution) return '读取中…'
     if (resolution.error) return resolution.error
     const truncated = resolution.truncated ? '（仅显示前 300 项）' : ''
@@ -705,13 +706,14 @@ export default function App() {
         </div>
 
         <footer className="status-bar">
-          <div className="status-text" title={statusText}>{statusText}</div>
+          {statusText ? <div className="status-text" title={statusText}>{statusText}</div> : null}
           <div className="status-keys">
             <span className="key"><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
             <span className="key"><kbd>Enter</kbd> 进入/打开</span>
             <span className="key"><kbd>{platform.modifier}</kbd><kbd>Enter</kbd> {platform.fileManager}</span>
             <span className="key"><kbd>{platform.modifier}</kbd><kbd>Shift</kbd><kbd>Enter</kbd> 当前目录</span>
-            <span className="key"><kbd>Alt</kbd><kbd>↑</kbd> 上级</span>
+            <span className="key"><kbd>{platform.alt}</kbd><kbd>↑</kbd> 上级</span>
+            <span className="key"><kbd>{platform.alt}</kbd><kbd>L</kbd> 清空</span>
             <span className="key"><kbd>{platform.modifier}</kbd><kbd>C</kbd> 复制</span>
           </div>
         </footer>

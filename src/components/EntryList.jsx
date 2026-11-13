@@ -147,6 +147,12 @@ function StartScreen({
           <span className="example-dot" />
           <span>智能定位：带引号、空格或尾部参数的路径，会自动定位到最近的可用目录。</span>
         </div>
+        <div className="example">
+          <span className="example-dot" />
+          <span>
+            快速清空：按 <kbd>{platform.alt}</kbd>+<kbd>L</kbd> 清空输入框并返回起始界面。
+          </span>
+        </div>
       </div>
     </div>
   )

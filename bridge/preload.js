@@ -278,10 +278,16 @@ async function resolveQuery(raw) {
       }
     }
   } catch (err) {
+    // An unreadable directory still has a parent and a breadcrumb trail. Keep
+    // that context so the user can navigate back instead of getting stuck.
     return baseResult({
       mode: 'error',
       input: raw,
       candidate,
+      resolvedPath: candidate,
+      baseDir: candidate,
+      upDir: parentOf(candidate),
+      segments: buildSegments(candidate),
       error: fsErrorMessage(err, candidate)
     })
   }
@@ -750,6 +756,7 @@ function getPlatformInfo() {
     isWindows: IS_WINDOWS,
     fileManager: IS_MAC ? '访达' : IS_WINDOWS ? '资源管理器' : '文件管理器',
     modifier: IS_MAC ? '⌘' : 'Ctrl',
+    alt: IS_MAC ? '⌥' : 'Alt',
     separator: path.sep,
     placeholder: IS_MAC ? '输入路径，如 /Users/你的用户名/Documents' : '输入路径，如 C:\\Users\\Public',
     pathExample: IS_MAC ? '~/Documents' : 'C:\\Users\\Public',

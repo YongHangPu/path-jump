@@ -787,6 +787,7 @@ input {
   display: flex;
   align-items: center;
   gap: 9px;
+  margin-left: auto;
 }
 
 .key {
@@ -801,8 +802,8 @@ input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .status-keys .key:nth-child(5),
-  .status-keys .key:nth-child(6) {
+  .status-keys .key:nth-child(6),
+  .status-keys .key:nth-child(7) {
     display: none;
   }
 
